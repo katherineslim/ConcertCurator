@@ -115,6 +115,7 @@ def update_for_artist(all_concerts, query):
 
     for event in events:
         concert = {}
+        performer = pretty_soup.split('Tour Dates - ')[1].split(' in Concert')[0]
         date = event.split('"startDate":"')[1].split("T00:00:00")[0]
         venue_name = event.split('"@type":"Place","name":"')[1].split('","address":')[0]
         piece = pretty_soup.split(venue_name)[-1].split("\n")[4].strip()
@@ -123,7 +124,7 @@ def update_for_artist(all_concerts, query):
             '","availability":"'
         )[0]
         image_url = event.split('"ImageObject","url":"')[1].split('","headline":"')[0]
-        concert["performer"] = query.split("concerts")[0].strip().title()
+        concert["performer"] = performer
         concert["date"] = date
         concert["piece"] = piece
         concert["venue_name"] = venue_name

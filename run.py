@@ -8,6 +8,7 @@ from googlesearch import search
 from pywebio import start_server
 from pywebio.input import input, TEXT
 from pywebio.output import put_text, put_markdown, put_loading
+import re
 
 
 def correct_locations(locations):
@@ -116,7 +117,7 @@ def update_for_artist(all_concerts, query):
     for event in events:
         concert = {}
         performer = pretty_soup.split('Tour Dates - ')[1].split(' in Concert')[0]
-        date = event.split('"startDate":"')[1].split("T00:00:00")[0]
+        date = re.split("T..:..:..", event.split('"startDate":"')[1])[0]
         venue_name = event.split('"@type":"Place","name":"')[1].split('","address":')[0]
         piece = pretty_soup.split(venue_name)[-1].split("\n")[4].strip()
         address = event.split('"address":"')[1].split('"},"offers":')[0]

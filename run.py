@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from googlesearch import search
 from pywebio import start_server
 from pywebio.input import input, TEXT
-from pywebio.output import put_text, put_markdown
+from pywebio.output import put_text, put_markdown, put_loading
 
 
 def correct_locations(locations):
@@ -139,21 +139,24 @@ def get_all_concerts():
     Returns list of concerts and list of preferred location(s).
     """
     artist_names, input_locations = get_inputs()
-    queries = [f"{name} concerts" for name in artist_names]
-    all_concerts = []
+    with put_loading():
+        queries = [f"{name} concerts" for name in artist_names]
+        all_concerts = []
 
-    for query in queries:
-        update_for_artist(all_concerts, query)
+        for query in queries:
+            update_for_artist(all_concerts, query)
 
-    return all_concerts, input_locations
+        return all_concerts, input_locations
 
 
 def get_concerts():
     """
+    ConcertCurator: 
     Get list of upcoming concerts, sorted by date.
     """
     all_concerts, input_locations = get_all_concerts()
-    concerts_near_me = sort_concerts(all_concerts, input_locations)
+    with put_loading():
+        concerts_near_me = sort_concerts(all_concerts, input_locations)
     print_output(concerts_near_me)
 
 

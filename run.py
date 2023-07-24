@@ -5,6 +5,7 @@ Script to compile and organize concerts for various performers.
 import requests
 from bs4 import BeautifulSoup
 from googlesearch import search
+from pywebio import start_server
 from pywebio.input import input, TEXT
 from pywebio.output import put_text, put_markdown
 
@@ -157,6 +158,4 @@ def get_concerts():
 
 
 if __name__ == "__main__":
-    import pywebio
-
-    pywebio.start_server(get_concerts, port=80)
+    start_server(get_concerts, port=80)

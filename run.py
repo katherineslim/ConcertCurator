@@ -2,13 +2,13 @@
 2023-07-23
 Script to compile and organize concerts for various performers.
 """
+import re
 import requests
 from bs4 import BeautifulSoup
 from googlesearch import search
 from pywebio import start_server
 from pywebio.input import input, TEXT
 from pywebio.output import put_text, put_markdown, put_loading
-import re
 
 
 def correct_locations(locations):
@@ -17,41 +17,57 @@ def correct_locations(locations):
     """
     for i, loc in enumerate(locations):
         if loc != "USA":
-            locations[i] = loc.title()
+            if "d'" not in loc:
+                locations[i] = loc.title()
             if locations[i] in ["Usa", "U.S.", "US", "U.S.A.", "United States"]:
                 locations[i] = "USA"
             elif locations[i] in ["Uk", "UK", "U.K."]:
                 locations[i] = "United Kingdom"
 
 
+def get_list_from_input(input_string):
+    """
+    Parse input into a list of strings
+    """
+    return [elt.strip() for elt in str(input_string).split(",")]
+
+
+def check_artists(input_names):
+    """
+    Validate artist names
+    """
+    for name in get_list_from_input(input_names):
+        if not concerts_on_website(get_pretty_soup(get_website(querify_name(name)))):
+            return f"'{name}' was not found on-tour on \
+                https://www.deutschegrammophon.com or https://www.deccaclassics.com"
+    return None
+
+
 def get_inputs():
     """
     Get user inputs
     """
-    artist_names = [
-        name.strip()
-        for name in str(
-            input(
-                "Input the name(s) of the performer(s) you'd like to see, separated by commas. \
-            (Hint: check that your artist(s) appear as on-tour on either \
-            https://www.deutschegrammophon.com/en/artists/a-z/a or \
-            https://www.deccaclassics.com/en/artists/a-z/a.)",
-                type=TEXT,
-            )
-        ).split(",")
-    ]
-    input_locations = [
-        loc.strip()
-        for loc in str(
-            input(
-                "Input the desired concert location(s), e.g., city name(s) (without the state) \
-            or country name(s) (e.g., USA, United Kingdom), separated by commas.\
-            Or type ANY if no preference. It may take up to ~4 seconds per performer \
-            to generate your results.",
-                type=TEXT,
-            )
-        ).split(",")
-    ]
+    artist_names = get_list_from_input(
+        input(
+            "Input the name(s) of the performer(s) you'd like to see, separated by commas.",
+            type=TEXT,
+            help_text="(Hint: Check that your artist(s) appear as on-tour on either \
+                https://www.deutschegrammophon.com/en/artists/a-z/a or \
+                https://www.deccaclassics.com/en/artists/a-z/a.)",
+            # validate=check_artists,
+        )
+    )
+    input_locations = get_list_from_input(
+        input(
+            "Input the desired concert location(s), e.g., city name(s) and/or country name(s), \
+                separated by commas. Type ANY if no preference.",
+            type=TEXT,
+            help_text="City examples: Paris, Buenos Aires, Zürich. \
+                        Country examples: USA, United Kingdom, Germany. \
+                        Make sure spelling(s) are correct, including any special characters. \
+                        It may take up to ~4 seconds per performer to generate your results.",
+        )
+    )
     correct_locations(input_locations)
 
     return artist_names, input_locations
@@ -94,9 +110,10 @@ def print_output(concerts_near_me):
         put_text("\n")
 
 
-def update_for_artist(all_concerts, query):
+def get_website(query):
     """
-    Update unsorted list of concerts for individual performer
+    Get record label website that matches the query
+    Returns None if matching website not found
     """
     for search_result in search(query, tld="co.in", num=10, stop=10, pause=2):
         if (
@@ -104,11 +121,35 @@ def update_for_artist(all_concerts, query):
             or "deccaclassics.com" in search_result
         ):
             website = search_result
-            break
+            return website
+    return None
 
+
+def get_pretty_soup(website):
+    """
+    Get website content
+    """
     content = requests.get(website, timeout=5).text
     pretty_soup = BeautifulSoup(content, "lxml").prettify()
-    if "Tour Dates" not in pretty_soup:  # performer does not appear on-tour on website
+    return pretty_soup
+
+
+def concerts_on_website(pretty_soup):
+    """
+    Check whether website displays upcoming concerts
+    """
+    if "Tour Dates" not in pretty_soup:
+        return False
+    return True
+
+
+def update_for_artist(all_concerts, query):
+    """
+    Update unsorted list of concerts for individual performer
+    """
+    website = get_website(query)
+    pretty_soup = get_pretty_soup(website)
+    if not concerts_on_website(pretty_soup):
         return
 
     events = pretty_soup.split("MusicEvent")[1:]
@@ -116,7 +157,7 @@ def update_for_artist(all_concerts, query):
 
     for event in events:
         concert = {}
-        performer = pretty_soup.split('Tour Dates - ')[1].split(' in Concert')[0]
+        performer = pretty_soup.split("Tour Dates - ")[1].split(" in Concert")[0]
         date = re.split("T..:..:..", event.split('"startDate":"')[1])[0]
         venue_name = event.split('"@type":"Place","name":"')[1].split('","address":')[0]
         piece = pretty_soup.split(venue_name)[-1].split("\n")[4].strip()
@@ -135,6 +176,13 @@ def update_for_artist(all_concerts, query):
         all_concerts.append(concert)
 
 
+def querify_name(name):
+    """
+    Turn name into query for concerts
+    """
+    return f"{name} concerts"
+
+
 def get_all_concerts():
     """
     Get unsorted list of all concerts, regardless of location.
@@ -142,7 +190,7 @@ def get_all_concerts():
     """
     artist_names, input_locations = get_inputs()
     with put_loading():
-        queries = [f"{name} concerts" for name in artist_names]
+        queries = [querify_name(name) for name in artist_names]
         all_concerts = []
 
         for query in queries:
@@ -153,7 +201,7 @@ def get_all_concerts():
 
 def get_concerts():
     """
-    ConcertCurator: 
+    ConcertCurator:
     Get list of upcoming concerts, sorted by date.
     """
     all_concerts, input_locations = get_all_concerts()

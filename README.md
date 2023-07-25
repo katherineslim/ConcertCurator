@@ -1,6 +1,8 @@
 # **ConcertCurator**
 Find upcoming concerts from your favorite classical artists!
 
+Dependencies: Python (3.11.1), Beautiful Soup (4.12.2), Requests (2.31.0), googlesearch (2.4.2), PyWebIO (1.8.2)
+
 ## Instructions
 
 ### 1. Run `run.py` and navigate to the provided URL
